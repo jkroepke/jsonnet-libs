@@ -9,13 +9,16 @@ local k = import 'ksonnet-util/kausal.libsonnet';
 
   local container = k.core.v1.container,
 
+  jaeger_env_map::
+    if $._config.jaeger_agent_host == null then {}
+    else {
+      JAEGER_AGENT_HOST: $._config.jaeger_agent_host,
+      JAEGER_TAGS: 'namespace=%s,cluster=%s' % [$._config.namespace, $._config.cluster],
+      JAEGER_SAMPLER_MANAGER_HOST_PORT: 'http://%s:5778/sampling' % $._config.jaeger_agent_host,
+    },
+
   jaeger_mixin::
-    if $._config.jaeger_agent_host == null
-    then {}
-    else
-      container.withEnvMixin([
-        container.envType.new('JAEGER_AGENT_HOST', $._config.jaeger_agent_host),
-        container.envType.new('JAEGER_TAGS', 'namespace=%s,cluster=%s' % [$._config.namespace, $._config.cluster]),
-        container.envType.new('JAEGER_SAMPLER_MANAGER_HOST_PORT', 'http://%s:5778/sampling' % $._config.jaeger_agent_host),
-      ]),
+    if std.length($.jaeger_env_map) > 0
+    then container.withEnvMap($.jaeger_env_map)
+    else {},
 }
